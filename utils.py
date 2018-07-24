@@ -48,6 +48,7 @@ def convert_resnet(model):
 
     return Net(features, classifier)
 
+
 class BasicResnetBlock(nn.Module):
     expansion = 1
 
@@ -67,6 +68,7 @@ class BasicResnetBlock(nn.Module):
         self.stride = source_block.stride
         self.relu = nn.ReLU(inplace=True)
 
+
     def forward(self, x):
         residual = x
 
@@ -85,7 +87,7 @@ class BasicResnetBlock(nn.Module):
 class BottleneckResnetBlock(nn.Module):
     expansion = 4
 
-    def __init__(self, source_block):
+    def __init__(self, source_block, se=False):
         super(BottleneckResnetBlock, self).__init__()
         self.block1 = nn.Sequential(
             source_block.conv1,
@@ -105,6 +107,10 @@ class BottleneckResnetBlock(nn.Module):
 
         self.downsample = source_block.downsample
         self.stride = source_block.stride
+        if se:
+            self.se_module = source_block.se_module
+        else:
+            self.se_module = None
 
     def forward(self, x):
         residual = x
@@ -116,7 +122,8 @@ class BottleneckResnetBlock(nn.Module):
         if self.downsample is not None:
             residual = self.downsample(x)
 
-        out += residual
+        if self.se_module is not None:
+            out += self.se_module(out) + residual
         out = self.relu(out)
 
         return out
