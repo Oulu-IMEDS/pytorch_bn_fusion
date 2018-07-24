@@ -10,9 +10,8 @@ We know that both - convolution and batchnorm are the linear operations, thus ca
 
 ## Supported architectures
 
-- [ ] VGG
-- [ ] ResNet Family
-- [ ] Dynamic UNet
+- [x] VGG
+- [ ] ResNet Family from torchvision
 
 ## Acknowledgements
 

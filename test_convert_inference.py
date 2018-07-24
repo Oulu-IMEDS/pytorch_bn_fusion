@@ -7,6 +7,8 @@ import argparse
 from PIL import Image
 
 from bn_fusion import fuse_bn_sequential
+from utils import convert_resnet
+
 import time
 
 if __name__ == '__main__':
@@ -24,6 +26,9 @@ if __name__ == '__main__':
 
     net = getattr(models, args.model)(pretrained=True)
     net.eval()
+
+    if 'resnet' in args.model:
+        net = convert_resnet(net)
 
     start = time.time()
     with torch.no_grad():
