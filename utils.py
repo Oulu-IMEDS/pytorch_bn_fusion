@@ -2,39 +2,6 @@ import torch.nn as nn
 from torchvision.models import resnet as resnet_modules
 
 
-def convert_resnet(model):
-    """
-    This function wraps
-    :param model: nn.Sequential
-    :return: nn.Sequential
-    """
-
-    layer0 = nn.Sequential(
-        model.conv1,
-        model.bn1,
-        model.relu,
-        model.maxpool
-    )
-
-
-    features = [layer0, ]
-    for ind in range(1, 5):
-        modules_layer = model._modules[f'layer{ind}']._modules
-        new_modules = []
-        for block_name in modules_layer:
-            b = modules_layer[block_name]
-            if isinstance(b, resnet_modules.BasicBlock):
-                b = BasicBlock(b)
-            if isinstance(b, resnet_modules.Bottleneck):
-                b = Bottleneck(b)
-            new_modules.append(b)
-        features.append(nn.Sequential(*new_modules))
-
-    features = nn.Sequential(*features)
-    classifier = nn.Sequential(model.fc)
-
-    return Net(features, classifier)
-
 
 class Net(nn.Module):
     def __init__(self, features, classifer):
@@ -49,11 +16,43 @@ class Net(nn.Module):
         return self.classifier(out)
 
 
-class BasicBlock(nn.Module):
+def convert_resnet(model):
+    """
+    This function wraps any resnet model from torchvision
+    :param model: nn.Sequential
+    :return: nn.Sequential
+    """
+
+    layer0 = nn.Sequential(
+        model.conv1,
+        model.bn1,
+        model.relu,
+        model.maxpool
+    )
+
+    features = [layer0, ]
+    for ind in range(1, 5):
+        modules_layer = model._modules[f'layer{ind}']._modules
+        new_modules = []
+        for block_name in modules_layer:
+            b = modules_layer[block_name]
+            if isinstance(b, resnet_modules.BasicBlock):
+                b = BasicResnetBlock(b)
+            if isinstance(b, resnet_modules.Bottleneck):
+                b = BottleneckResnetBlock(b)
+            new_modules.append(b)
+        features.append(nn.Sequential(*new_modules))
+
+    features = nn.Sequential(*features)
+    classifier = nn.Sequential(model.fc)
+
+    return Net(features, classifier)
+
+class BasicResnetBlock(nn.Module):
     expansion = 1
 
     def __init__(self, source_block):
-        super(BasicBlock, self).__init__()
+        super(BasicResnetBlock, self).__init__()
         self.block1 = nn.Sequential(
             source_block.conv1,
             source_block.bn1
@@ -83,11 +82,11 @@ class BasicBlock(nn.Module):
         return out
 
 
-class Bottleneck(nn.Module):
+class BottleneckResnetBlock(nn.Module):
     expansion = 4
 
     def __init__(self, source_block):
-        super(Bottleneck, self).__init__()
+        super(BottleneckResnetBlock, self).__init__()
         self.block1 = nn.Sequential(
             source_block.conv1,
             source_block.bn1,

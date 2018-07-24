@@ -6,7 +6,7 @@ from torchvision import transforms
 import argparse
 from PIL import Image
 
-from bn_fusion import fuse_bn_sequential
+from bn_fusion import fuse_bn_recursively
 from utils import convert_resnet
 
 import time
@@ -30,13 +30,16 @@ if __name__ == '__main__':
     if 'resnet' in args.model:
         net = convert_resnet(net)
 
+    with torch.no_grad():
+        F.softmax(net(img), 1)
+
     start = time.time()
     with torch.no_grad():
         res_0 = F.softmax(net(img), 1)
 
     print('Non fused takes', time.time()-start, 'seconds')
 
-    net.features = fuse_bn_sequential(net.features)
+    net = fuse_bn_recursively(net)
     start = time.time()
     with torch.no_grad():
         res_1 = F.softmax(net(img), 1)

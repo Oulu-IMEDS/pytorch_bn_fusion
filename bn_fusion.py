@@ -5,9 +5,12 @@ import torch.nn as nn
 def fuse_bn_sequential(block):
     """
     This function takes a sequential block and fuses the batch normalization with convolution
-    :param model:
-    :return:
+
+    :param model: nn.Sequential. Source resnet model
+    :return: nn.Sequential. Converted block
     """
+    if not isinstance(block, nn.Sequential):
+        return block
     stack = []
     for m in block.children():
         if isinstance(m, nn.BatchNorm2d):
@@ -51,4 +54,16 @@ def fuse_bn_sequential(block):
         else:
             stack.append(m)
 
-    return nn.Sequential(*stack)
+    if len(stack) > 1:
+        return nn.Sequential(*stack)
+    else:
+        return stack[0]
+
+
+def fuse_bn_recursively(model):
+    for module_name in model._modules:
+        model._modules[module_name] = fuse_bn_sequential(model._modules[module_name])
+        if len(model._modules[module_name]._modules) > 0:
+            fuse_bn_recursively(model._modules[module_name])
+
+    return model
