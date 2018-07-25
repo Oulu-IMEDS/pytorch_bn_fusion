@@ -5,7 +5,7 @@ from torchvision import transforms
 
 import argparse
 from PIL import Image
-
+import numpy as np
 from bn_fusion import fuse_bn_recursively
 from utils import convert_resnet_family
 import pretrainedmodels
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     except:
         net = pretrainedmodels.__dict__[args.model](num_classes=1000, pretrained='imagenet')
 
-    net.eval()
+
 
     if 'resnet' in args.model:
         se = True if 'se' in args.model else False
@@ -37,21 +37,29 @@ if __name__ == '__main__':
 
     # Benchmarking
     # First, we run the network the way it is
+    net.eval()
     with torch.no_grad():
         F.softmax(net(img), 1)
     # Measuring non-optimized model performance
-    start = time.time()
-    with torch.no_grad():
-        res_0 = F.softmax(net(img), 1)
+    times = []
+    for i in range(50):
+        start = time.time()
+        with torch.no_grad():
+            res_0 = F.softmax(net(img), 1)
+        times.append(time.time() - start)
 
-    print('Non fused takes', time.time()-start, 'seconds')
+    print('Non fused takes', np.mean(times), 'seconds')
 
-    net.features = fuse_bn_recursively(net.features)
+    net = fuse_bn_recursively(net)
+    net.eval()
+    times = []
+    for i in range(50):
+        start = time.time()
+        with torch.no_grad():
+            res_1 = F.softmax(net(img), 1)
+        times.append(time.time() - start)
 
-    start = time.time()
-    with torch.no_grad():
-        res_1 = F.softmax(net(img), 1)
-    print('Fused takes', time.time()-start, 'seconds')
+    print('Fused takes', np.mean(times), 'seconds')
 
     diff = res_0 - res_1
     print('L2 Norm of the element-wise difference:', diff.norm().item())
