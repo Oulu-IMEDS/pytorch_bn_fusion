@@ -1,7 +1,6 @@
 import torch.nn as nn
 from torchvision.models import resnet as resnet_modules
-
-
+from pretrainedmodels.models import senet as senet_modules
 
 class Net(nn.Module):
     def __init__(self, features, classifer):
@@ -16,21 +15,25 @@ class Net(nn.Module):
         return self.classifier(out)
 
 
-def convert_resnet(model):
+def convert_resnet_family(model, se=False):
     """
-    This function wraps any resnet model from torchvision
+    This function wraps any (se)resnet model from torchvision or from pretrained models
     :param model: nn.Sequential
     :return: nn.Sequential
     """
 
-    layer0 = nn.Sequential(
-        model.conv1,
-        model.bn1,
-        model.relu,
-        model.maxpool
-    )
+    features = list()
+    if not se:
+        layer0 = nn.Sequential(
+            model.conv1,
+            model.bn1,
+            model.relu,
+            model.maxpool
+        )
+        features.append(layer0)
+    else:
+        features.append(model.layer0)
 
-    features = [layer0, ]
     for ind in range(1, 5):
         modules_layer = model._modules[f'layer{ind}']._modules
         new_modules = []
@@ -38,13 +41,21 @@ def convert_resnet(model):
             b = modules_layer[block_name]
             if isinstance(b, resnet_modules.BasicBlock):
                 b = BasicResnetBlock(b)
-            if isinstance(b, resnet_modules.Bottleneck):
-                b = BottleneckResnetBlock(b)
+
+            if isinstance(b, resnet_modules.Bottleneck) or \
+                    isinstance(b, senet_modules.SEBottleneck) or \
+                    isinstance(b, senet_modules.SEResNetBottleneck) or \
+                    isinstance(b, senet_modules.SEResNeXtBottleneck):
+
+                b = BottleneckResnetBlock(b, se)
             new_modules.append(b)
         features.append(nn.Sequential(*new_modules))
 
     features = nn.Sequential(*features)
-    classifier = nn.Sequential(model.fc)
+    if not se:
+        classifier = model.fc
+    else:
+        classifier = model.last_linear
 
     return Net(features, classifier)
 
@@ -67,7 +78,6 @@ class BasicResnetBlock(nn.Module):
         self.downsample = source_block.downsample
         self.stride = source_block.stride
         self.relu = nn.ReLU(inplace=True)
-
 
     def forward(self, x):
         residual = x

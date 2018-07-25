@@ -7,8 +7,8 @@ import argparse
 from PIL import Image
 
 from bn_fusion import fuse_bn_recursively
-from utils import convert_resnet
-
+from utils import convert_resnet_family
+import pretrainedmodels
 import time
 
 if __name__ == '__main__':
@@ -24,22 +24,30 @@ if __name__ == '__main__':
 
     img = trf(Image.open('dog.jpg')).unsqueeze(0)
 
-    net = getattr(models, args.model)(pretrained=True)
+    try:
+        net = getattr(models, args.model)(pretrained=True)
+    except:
+        net = pretrainedmodels.__dict__[args.model](num_classes=1000, pretrained='imagenet')
+
     net.eval()
 
     if 'resnet' in args.model:
-        net = convert_resnet(net)
+        se = True if 'se' in args.model else False
+        net = convert_resnet_family(net, se)
 
+    # Benchmarking
+    # First, we run the network the way it is
     with torch.no_grad():
         F.softmax(net(img), 1)
-
+    # Measuring non-optimized model performance
     start = time.time()
     with torch.no_grad():
         res_0 = F.softmax(net(img), 1)
 
     print('Non fused takes', time.time()-start, 'seconds')
 
-    net = fuse_bn_recursively(net)
+    net.features = fuse_bn_recursively(net.features)
+
     start = time.time()
     with torch.no_grad():
         res_1 = F.softmax(net(img), 1)
@@ -47,5 +55,3 @@ if __name__ == '__main__':
 
     diff = res_0 - res_1
     print('L2 Norm of the element-wise difference:', diff.norm().item())
-
-
