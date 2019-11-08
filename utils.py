@@ -133,9 +133,8 @@ class BottleneckResnetBlock(nn.Module):
             residual = self.downsample(x)
 
         if self.se_module is not None:
-            out += self.se_module(out) + residual
-        else:
-            out += residual
+            out += self.se_module(out)
+        out += residual
         out = self.relu(out)
 
         return out
