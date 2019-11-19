@@ -14,10 +14,7 @@ def fuse_bn_sequential(block):
     stack = []
     for m in block.children():
         if isinstance(m, nn.BatchNorm2d):
-            if isinstance(stack[-1], nn.Conv2d) or isinstance(
-                stack[-1], nn.ConvTranspose2d
-            ):
-                # Extract params of BatchNorm and Convolution layers
+            if isinstance(stack[-1], nn.Conv2d) or isinstance(stack[-1], nn.ConvTranspose2d):
                 bn_st_dict = m.state_dict()
                 conv_st_dict = stack[-1].state_dict()
 
@@ -34,7 +31,6 @@ def fuse_bn_sequential(block):
 
                 # Conv params
                 W = conv_st_dict["weight"]
-
                 if isinstance(stack[-1], nn.ConvTranspose2d):
                     W = W.transpose(0, 1)
 
