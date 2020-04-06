@@ -20,22 +20,22 @@ def fuse_bn_sequential(block):
 
                 # BatchNorm params
                 eps = m.eps
-                mu = bn_st_dict["running_mean"]
-                var = bn_st_dict["running_var"]
-                gamma = bn_st_dict["weight"]
+                mu = bn_st_dict['running_mean']
+                var = bn_st_dict['running_var']
+                gamma = bn_st_dict['weight']
 
-                if "bias" in bn_st_dict:
-                    beta = bn_st_dict["bias"]
+                if 'bias' in bn_st_dict:
+                    beta = bn_st_dict['bias']
                 else:
                     beta = torch.zeros(gamma.size(0)).float().to(gamma.device)
 
                 # Conv params
-                W = conv_st_dict["weight"]
+                W = conv_st_dict['weight']
                 if isinstance(stack[-1], nn.ConvTranspose2d):
                     W = W.transpose(0, 1)
 
-                if "bias" in conv_st_dict:
-                    bias = conv_st_dict["bias"]
+                if 'bias' in conv_st_dict:
+                    bias = conv_st_dict['bias']
                 else:
                     bias = torch.zeros(W.size(0)).float().to(gamma.device)
 
@@ -56,6 +56,7 @@ def fuse_bn_sequential(block):
                     stack[-1].bias = torch.nn.Parameter(bias)
                 else:
                     stack[-1].bias.data.copy_(bias)
+
         else:
             stack.append(m)
 
